@@ -5,6 +5,8 @@ import { keywordCache } from "@/lib/cache";
 import { rateLimit, getClientIp } from "@/lib/rate-limit";
 import type { KeywordApiResponse } from "@/types";
 
+export const maxDuration = 60;
+
 export async function POST(request: Request) {
   // 1. Rate limit check
   const clientIp = getClientIp(request);
