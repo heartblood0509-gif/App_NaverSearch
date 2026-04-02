@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -23,6 +23,11 @@ function parseKeywords(text: string): string[] {
 
 export function KeywordInput({ onSearch, isLoading }: KeywordInputProps) {
   const [text, setText] = useState("");
+  const [isMac, setIsMac] = useState(false);
+
+  useEffect(() => {
+    setIsMac(navigator.platform.toUpperCase().includes("MAC"));
+  }, []);
 
   const keywords = parseKeywords(text);
   const isOverLimit = keywords.length > MAX_KEYWORDS;
@@ -47,6 +52,8 @@ export function KeywordInput({ onSearch, isLoading }: KeywordInputProps) {
     [handleSearch]
   );
 
+  const shortcutLabel = isMac ? "⌘ + Enter" : "Ctrl + Enter";
+
   return (
     <Card className="shadow-lg border-0 ring-1 ring-border/50">
       <CardHeader className="pb-4">
@@ -60,23 +67,25 @@ export function KeywordInput({ onSearch, isLoading }: KeywordInputProps) {
       <CardContent className="space-y-6">
         <div>
           <Textarea
-            placeholder={"조회할 키워드를 입력하세요.\n줄바꿈, 쉼표, 탭으로 구분하여 여러 키워드를 입력할 수 있습니다.\n\n예시:\n맛집\n카페\n여행"}
+            placeholder={
+              "키워드를 한 줄에 하나씩 입력하세요.\n쉼표(,)로 구분해도 됩니다.\n\n예시:\n맛집\n카페\n여행"
+            }
             value={text}
             onChange={(e) => setText(e.target.value)}
             onKeyDown={handleKeyDown}
             rows={8}
             className="resize-y text-lg leading-relaxed rounded-xl border-muted-foreground/20 focus:border-green-500 focus:ring-green-500/20 transition-colors"
           />
-          <div className="mt-3 flex items-center justify-between text-base">
+          <div className="mt-3 flex items-center justify-between">
             <div className="flex items-center gap-2 text-muted-foreground">
               <Keyboard className="h-4 w-4" />
-              <span className="text-sm">⌘ + Enter 로 빠른 검색</span>
+              <span className="text-sm">
+                {shortcutLabel} 로 빠른 검색
+              </span>
             </div>
             <span
               className={`text-sm font-medium ${
-                isOverLimit
-                  ? "text-destructive"
-                  : "text-muted-foreground"
+                isOverLimit ? "text-destructive" : "text-muted-foreground"
               }`}
             >
               {keywords.length} / {MAX_KEYWORDS} 키워드
