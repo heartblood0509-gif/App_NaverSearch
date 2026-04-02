@@ -48,7 +48,7 @@ function getCompBadgeClasses(compIdx: string) {
 }
 
 export function KeywordTable({ results }: KeywordTableProps) {
-  const [sortField, setSortField] = useState<SortField>("totalQcCnt");
+  const [sortField, setSortField] = useState<SortField | null>(null);
   const [sortDirection, setSortDirection] = useState<SortDirection>("desc");
 
   const handleSort = (field: SortField) => {
@@ -61,6 +61,7 @@ export function KeywordTable({ results }: KeywordTableProps) {
   };
 
   const sortedResults = useMemo(() => {
+    if (!sortField) return results;
     return [...results].sort((a, b) => {
       let comparison = 0;
       switch (sortField) {
