@@ -111,8 +111,8 @@ export async function fetchKeywordVolumes(
 
   const allRawResults: NaverKeywordRaw[] = [];
 
-  // Process in batches of 5 chunks concurrently with delay between batches
-  const PARALLEL_BATCH = 5;
+  // Process in batches of 3 chunks concurrently with delay between batches
+  const PARALLEL_BATCH = 3;
   for (let i = 0; i < chunks.length; i += PARALLEL_BATCH) {
     const batch = chunks.slice(i, i + PARALLEL_BATCH);
     const promises = batch.map(async (chunk) => {
@@ -121,27 +121,35 @@ export async function fetchKeywordVolumes(
         showDetail: "1",
       });
 
-      const headers = buildHeaders(method, uri);
-      const response = await fetch(
-        `${NAVER_API_BASE}${uri}?${params.toString()}`,
-        { method, headers }
-      );
+      // Retry up to 2 times on 429
+      for (let attempt = 0; attempt < 3; attempt++) {
+        const headers = buildHeaders(method, uri);
+        const response = await fetch(
+          `${NAVER_API_BASE}${uri}?${params.toString()}`,
+          { method, headers }
+        );
 
-      if (!response.ok) {
-        const errorText = await response.text();
-        // Skip 400 errors (invalid keywords like spaces) instead of failing entirely
+        if (response.ok) {
+          const data = await response.json();
+          return (data.keywordList || []) as NaverKeywordRaw[];
+        }
+
+        if (response.status === 429 && attempt < 2) {
+          await new Promise((resolve) => setTimeout(resolve, 1000 * (attempt + 1)));
+          continue;
+        }
+
         if (response.status === 400) {
-          console.warn(`Skipping invalid keywords: ${chunk.join(",")}`);
           return [] as NaverKeywordRaw[];
         }
+
+        const errorText = await response.text();
         throw new NaverApiError(
           `네이버 API 오류 (${response.status}): ${errorText}`,
           response.status
         );
       }
-
-      const data = await response.json();
-      return (data.keywordList || []) as NaverKeywordRaw[];
+      return [] as NaverKeywordRaw[];
     });
 
     const results = await Promise.all(promises);
@@ -149,7 +157,7 @@ export async function fetchKeywordVolumes(
 
     // Delay between batches to avoid 429
     if (i + PARALLEL_BATCH < chunks.length) {
-      await new Promise((resolve) => setTimeout(resolve, 300));
+      await new Promise((resolve) => setTimeout(resolve, 500));
     }
   }
 
