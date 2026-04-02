@@ -14,6 +14,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Lightbulb, ChevronDown, ChevronUp } from "lucide-react";
 import type { KeywordResult } from "@/types";
+import { ExportButtons } from "./export-buttons";
 
 interface RelatedKeywordsProps {
   keywords: KeywordResult[];
@@ -52,15 +53,18 @@ export function RelatedKeywords({ keywords }: RelatedKeywordsProps) {
   return (
     <Card className="shadow-lg border-0 ring-1 ring-border/50">
       <CardHeader className="pb-4">
-        <CardTitle className="flex items-center gap-3 text-2xl font-bold">
-          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-amber-500/10">
-            <Lightbulb className="h-5 w-5 text-amber-600" />
-          </div>
-          연관 키워드
-          <span className="text-lg font-medium text-muted-foreground">
-            {keywords.length}개
-          </span>
-        </CardTitle>
+        <div className="flex items-center justify-between">
+          <CardTitle className="flex items-center gap-3 text-2xl font-bold">
+            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-amber-500/10">
+              <Lightbulb className="h-5 w-5 text-amber-600" />
+            </div>
+            연관 키워드
+            <span className="text-lg font-medium text-muted-foreground">
+              {keywords.length}개
+            </span>
+          </CardTitle>
+          <ExportButtons results={keywords} />
+        </div>
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="overflow-hidden rounded-xl border">
