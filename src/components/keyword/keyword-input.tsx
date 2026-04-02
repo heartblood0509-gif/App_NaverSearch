@@ -16,7 +16,7 @@ const MAX_KEYWORDS = 100;
 function parseKeywords(text: string): string[] {
   return text
     .split(/[\n,\t]+/)
-    .map((k) => k.trim())
+    .map((k) => k.trim().replace(/\s+/g, ""))
     .filter((k) => k.length > 0)
     .filter((k, i, arr) => arr.indexOf(k) === i);
 }
