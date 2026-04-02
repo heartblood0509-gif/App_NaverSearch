@@ -109,33 +109,49 @@ export async function fetchKeywordVolumes(
     chunks.push(keywords.slice(i, i + CHUNK_SIZE));
   }
 
-  // Process all chunks in parallel (Naver allows 30 req/sec)
-  const promises = chunks.map(async (chunk) => {
-    const params = new URLSearchParams({
-      hintKeywords: chunk.join(","),
-      showDetail: "1",
+  const allRawResults: NaverKeywordRaw[] = [];
+
+  // Process in batches of 5 chunks concurrently with delay between batches
+  const PARALLEL_BATCH = 5;
+  for (let i = 0; i < chunks.length; i += PARALLEL_BATCH) {
+    const batch = chunks.slice(i, i + PARALLEL_BATCH);
+    const promises = batch.map(async (chunk) => {
+      const params = new URLSearchParams({
+        hintKeywords: chunk.join(","),
+        showDetail: "1",
+      });
+
+      const headers = buildHeaders(method, uri);
+      const response = await fetch(
+        `${NAVER_API_BASE}${uri}?${params.toString()}`,
+        { method, headers }
+      );
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        // Skip 400 errors (invalid keywords like spaces) instead of failing entirely
+        if (response.status === 400) {
+          console.warn(`Skipping invalid keywords: ${chunk.join(",")}`);
+          return [] as NaverKeywordRaw[];
+        }
+        throw new NaverApiError(
+          `네이버 API 오류 (${response.status}): ${errorText}`,
+          response.status
+        );
+      }
+
+      const data = await response.json();
+      return (data.keywordList || []) as NaverKeywordRaw[];
     });
 
-    const headers = buildHeaders(method, uri);
-    const response = await fetch(
-      `${NAVER_API_BASE}${uri}?${params.toString()}`,
-      { method, headers }
-    );
+    const results = await Promise.all(promises);
+    allRawResults.push(...results.flat());
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      throw new NaverApiError(
-        `네이버 API 오류 (${response.status}): ${errorText}`,
-        response.status
-      );
+    // Delay between batches to avoid 429
+    if (i + PARALLEL_BATCH < chunks.length) {
+      await new Promise((resolve) => setTimeout(resolve, 300));
     }
-
-    const data = await response.json();
-    return (data.keywordList || []) as NaverKeywordRaw[];
-  });
-
-  const results = await Promise.all(promises);
-  const allRawResults = results.flat();
+  }
 
   // Split into exact matches and related keywords
   const keywordSet = new Set(keywords.map((k) => k.toLowerCase().trim()));
