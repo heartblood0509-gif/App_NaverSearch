@@ -1,7 +1,8 @@
 import type { KeywordResult } from "@/types";
 
 interface CacheEntry {
-  data: KeywordResult;
+  exact: KeywordResult[];
+  related: KeywordResult[];
   expiresAt: number;
 }
 
@@ -15,12 +16,16 @@ class KeywordCache {
     this.ttlMs = ttlMs;
   }
 
-  private normalizeKey(keyword: string): string {
-    return keyword.toLowerCase().trim();
+  /** 키워드 목록을 정규화하여 캐시 키 생성 */
+  private normalizeKey(keywords: string[]): string {
+    return keywords
+      .map((k) => k.toLowerCase().trim())
+      .sort()
+      .join("|");
   }
 
-  get(keyword: string): KeywordResult | null {
-    const key = this.normalizeKey(keyword);
+  get(keywords: string[]): { exact: KeywordResult[]; related: KeywordResult[] } | null {
+    const key = this.normalizeKey(keywords);
     const entry = this.store.get(key);
 
     if (!entry) return null;
@@ -29,40 +34,16 @@ class KeywordCache {
       return null;
     }
 
-    return entry.data;
+    return { exact: entry.exact, related: entry.related };
   }
 
-  set(keyword: string, data: KeywordResult): void {
-    const key = this.normalizeKey(keyword);
+  set(keywords: string[], exact: KeywordResult[], related: KeywordResult[]): void {
+    const key = this.normalizeKey(keywords);
     this.store.set(key, {
-      data,
+      exact,
+      related,
       expiresAt: Date.now() + this.ttlMs,
     });
-  }
-
-  getMany(keywords: string[]): {
-    cached: KeywordResult[];
-    uncached: string[];
-  } {
-    const cached: KeywordResult[] = [];
-    const uncached: string[] = [];
-
-    for (const keyword of keywords) {
-      const result = this.get(keyword);
-      if (result) {
-        cached.push(result);
-      } else {
-        uncached.push(keyword);
-      }
-    }
-
-    return { cached, uncached };
-  }
-
-  setMany(results: KeywordResult[]): void {
-    for (const result of results) {
-      this.set(result.keyword, result);
-    }
   }
 
   get size(): number {

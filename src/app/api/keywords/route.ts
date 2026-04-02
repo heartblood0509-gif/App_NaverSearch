@@ -33,27 +33,50 @@ export async function POST(request: Request) {
 
     const keywords = parsed.data.keywords;
 
-    // 3. Always fetch from API to get related keywords
-    const { exact, related } = await fetchKeywordVolumes(keywords);
-    keywordCache.setMany(exact);
-    const exactResults = exact;
-    const relatedResults = related;
+    // 3. Check cache (exact + related keywords together)
+    const cached = keywordCache.get(keywords);
+    if (cached) {
+      const keywordOrder = new Map(
+        keywords.map((k, i) => [k.toLowerCase().trim(), i])
+      );
+      cached.exact.sort((a, b) => {
+        const orderA = keywordOrder.get(a.keyword.toLowerCase().trim()) ?? 999;
+        const orderB = keywordOrder.get(b.keyword.toLowerCase().trim()) ?? 999;
+        return orderA - orderB;
+      });
 
-    // 5. Sort exact results in the same order as input keywords
+      return NextResponse.json({
+        results: cached.exact,
+        relatedKeywords: cached.related,
+        meta: {
+          totalKeywords: cached.exact.length,
+          cachedCount: cached.exact.length,
+          timestamp: new Date().toISOString(),
+        },
+      } satisfies KeywordApiResponse);
+    }
+
+    // 4. Fetch from Naver API
+    const { exact, related } = await fetchKeywordVolumes(keywords);
+
+    // 5. Cache the results
+    keywordCache.set(keywords, exact, related);
+
+    // 6. Sort exact results in the same order as input keywords
     const keywordOrder = new Map(
       keywords.map((k, i) => [k.toLowerCase().trim(), i])
     );
-    exactResults.sort((a, b) => {
+    exact.sort((a, b) => {
       const orderA = keywordOrder.get(a.keyword.toLowerCase().trim()) ?? 999;
       const orderB = keywordOrder.get(b.keyword.toLowerCase().trim()) ?? 999;
       return orderA - orderB;
     });
 
     const response: KeywordApiResponse = {
-      results: exactResults,
-      relatedKeywords: relatedResults,
+      results: exact,
+      relatedKeywords: related,
       meta: {
-        totalKeywords: exactResults.length,
+        totalKeywords: exact.length,
         cachedCount: 0,
         timestamp: new Date().toISOString(),
       },
