@@ -15,7 +15,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "네이버 검색량 조회 - 키워드 PC/모바일 검색량 분석",
+  title: "Keyword Pick - 네이버 키워드 검색량 분석",
   description:
     "네이버 키워드의 월간 PC, 모바일, 합산 검색량을 한번에 조회하고 CSV/Excel로 내보내기할 수 있는 무료 도구입니다.",
 };
